@@ -6,7 +6,7 @@ import Alert from '@mui/material/Alert';
 
 import { paths } from '@/paths';
 import { logger } from '@/lib/default-logger';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth';
 
 export interface GuestGuardProps {
   children: React.ReactNode;
@@ -14,7 +14,7 @@ export interface GuestGuardProps {
 
 export function GuestGuard({ children }: GuestGuardProps): React.JSX.Element | null {
   const router = useRouter();
-  const { user, error, isLoading } = useUser();
+  const { user, error, isLoading } = useAuth();
   const [isChecking, setIsChecking] = React.useState<boolean>(true);
 
   const checkPermissions = async (): Promise<void> => {

@@ -1,0 +1,128 @@
+src
+├── api
+│   ├── auth.ts
+│   └── axios.ts
+├── app
+│   ├── auth
+│   │   ├── reset-password
+│   │   │   └── page.tsx
+│   │   ├── sign-in
+│   │   │   └── page.tsx
+│   │   ├── sign-in-otp
+│   │   │   └── page.tsx
+│   │   └── sign-up
+│   │       └── page.tsx
+│   ├── dashboard
+│   │   ├── account
+│   │   │   └── page.tsx
+│   │   ├── bookings
+│   │   │   └── page.tsx
+│   │   ├── customers
+│   │   │   └── page.tsx
+│   │   ├── integrations
+│   │   │   └── page.tsx
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   └── settings
+│   │       └── page.tsx
+│   ├── errors
+│   │   └── not-found
+│   │       └── page.tsx
+│   ├── layout.tsx
+│   ├── not-found.tsx
+│   └── page.tsx
+├── components
+│   ├── auth
+│   │   ├── auth-guard.tsx
+│   │   ├── guest-guard.tsx
+│   │   ├── layout.tsx
+│   │   ├── reset-password-form.tsx
+│   │   ├── sign-in-form-otp.tsx
+│   │   ├── sign-in-form.tsx
+│   │   └── sign-up-form.tsx
+│   ├── core
+│   │   ├── chart.tsx
+│   │   ├── localization-provider.tsx
+│   │   ├── logo.tsx
+│   │   ├── no-ssr.tsx
+│   │   ├── route-loader.tsx
+│   │   └── theme-provider
+│   │       ├── emotion-cache.tsx
+│   │       └── theme-provider.tsx
+│   └── dashboard
+│       ├── account
+│       │   ├── account-details-form.tsx
+│       │   └── account-info.tsx
+│       ├── bookings
+│       │   ├── bookings-filters.tsx
+│       │   └── bookings-table.tsx
+│       ├── customer
+│       │   ├── customers-filters.tsx
+│       │   └── customers-table.tsx
+│       ├── integrations
+│       │   ├── integrations-card.tsx
+│       │   └── integrations-filters.tsx
+│       ├── layout
+│       │   ├── config.ts
+│       │   ├── main-nav.tsx
+│       │   ├── mobile-nav.tsx
+│       │   ├── nav-icons.tsx
+│       │   ├── side-nav.tsx
+│       │   └── user-popover.tsx
+│       ├── overview
+│       │   ├── budget.tsx
+│       │   ├── latest-orders.tsx
+│       │   ├── latest-products.tsx
+│       │   ├── sales.tsx
+│       │   ├── tasks-progress.tsx
+│       │   ├── total-customers.tsx
+│       │   ├── total-profit.tsx
+│       │   └── traffic.tsx
+│       └── settings
+│           ├── notifications.tsx
+│           └── update-password-form.tsx
+├── config.ts
+├── contexts
+│   ├── AuthContext.tsx
+│   └── user-context.tsx
+├── hooks
+│   ├── use-auth.ts
+│   ├── use-popover.ts
+│   ├── use-selection.ts
+│   └── use-user.ts
+├── lib
+│   ├── auth
+│   │   └── client.ts
+│   ├── default-logger.ts
+│   ├── get-site-url.ts
+│   ├── is-nav-item-active.ts
+│   └── logger.ts
+├── paths.ts
+├── styles
+│   ├── global.css
+│   └── theme
+│       ├── color-schemes.ts
+│       ├── colors.ts
+│       ├── components
+│       │   ├── avatar.tsx
+│       │   ├── button.tsx
+│       │   ├── card-content.tsx
+│       │   ├── card-header.tsx
+│       │   ├── card.tsx
+│       │   ├── components.tsx
+│       │   ├── link.tsx
+│       │   ├── stack.tsx
+│       │   ├── tab.tsx
+│       │   ├── table-body.tsx
+│       │   ├── table-cell.tsx
+│       │   └── table-head.tsx
+│       ├── create-theme.ts
+│       ├── shadows.ts
+│       ├── theme.d.ts
+│       ├── types.d.ts
+│       └── typography.ts
+└── types
+    ├── nav.d.ts
+    └── user.ts
+
+36 directories, 90 files

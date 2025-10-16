@@ -8,6 +8,7 @@ import { TestTubeIcon } from '@phosphor-icons/react/dist/ssr/TestTube';
 import { UserIcon } from '@phosphor-icons/react/dist/ssr/User';
 import { UsersIcon } from '@phosphor-icons/react/dist/ssr/Users';
 import { XSquare } from '@phosphor-icons/react/dist/ssr/XSquare';
+import { EnvelopeSimple } from '@phosphor-icons/react/dist/ssr/EnvelopeSimple';
 
 export const navIcons = {
   'chart-pie': ChartPieIcon,
@@ -17,6 +18,7 @@ export const navIcons = {
   'plugs-connected': PlugsConnectedIcon,
   'test-tube':TestTubeIcon,
   'x-square': XSquare,
+  'envelope-simple':EnvelopeSimple,
   user: UserIcon,
   users: UsersIcon,
 } as Record<string, Icon>;

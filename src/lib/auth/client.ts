@@ -89,9 +89,17 @@ class AuthClient {
   }
 
   async signOut(): Promise<{ error?: string }> {
-    localStorage.removeItem('custom-auth-token');
+    try {
+      // Clear all auth-related items
+      localStorage.removeItem('custom-auth-token'); // if using custom auth
+      localStorage.removeItem('user');              // stored user
+      localStorage.removeItem('accessToken');       // JWT access
+      localStorage.removeItem('refreshToken');      // JWT refresh
 
-    return {};
+      return {};
+    } catch (err: any) {
+      return { error: err.message };
+    }
   }
 }
 

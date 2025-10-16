@@ -15,7 +15,7 @@ import { UserIcon } from '@phosphor-icons/react/dist/ssr/User';
 import { paths } from '@/paths';
 import { authClient } from '@/lib/auth/client';
 import { logger } from '@/lib/default-logger';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/hooks/use-auth';
 
 export interface UserPopoverProps {
   anchorEl: Element | null;
@@ -24,29 +24,26 @@ export interface UserPopoverProps {
 }
 
 export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): React.JSX.Element {
-  const { checkSession } = useUser();
+  const { checkSession,logout,user } = useAuth();
 
   const router = useRouter();
 
   const handleSignOut = React.useCallback(async (): Promise<void> => {
-    try {
-      const { error } = await authClient.signOut();
-
-      if (error) {
-        logger.error('Sign out error', error);
-        return;
-      }
-
-      // Refresh the auth state
-      await checkSession?.();
-
-      // UserProvider, for this case, will not refresh the router and we need to do it manually
-      router.refresh();
-      // After refresh, AuthGuard will handle the redirect
-    } catch (error) {
+  try {
+    const { error } = await authClient.signOut();
+    if (error) {
       logger.error('Sign out error', error);
+      return;
     }
-  }, [checkSession, router]);
+
+    // Update AuthContext
+    logout();   // from useAuth()
+    router.push(paths.auth.signIn); // redirect to login
+  } catch (err) {
+    logger.error('Sign out error', err);
+  }
+}, [logout, router]);
+
 
   return (
     <Popover
@@ -57,9 +54,9 @@ export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): Reac
       slotProps={{ paper: { sx: { width: '240px' } } }}
     >
       <Box sx={{ p: '16px 20px ' }}>
-        <Typography variant="subtitle1">Sofia Rivers</Typography>
+        <Typography variant="subtitle1">{user?.role}</Typography>
         <Typography color="text.secondary" variant="body2">
-          sofia.rivers@devias.io
+          {user?.email}
         </Typography>
       </Box>
       <Divider />
