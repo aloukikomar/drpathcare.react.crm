@@ -192,7 +192,7 @@ export async function createBooking(data: BookingPayload): Promise<Booking> {
 // 🔹 Update Booking
 // ============================================================
 
-export async function updateBooking(id: string, data: BookingPayload): Promise<Booking> {
+export async function updateBooking(id: string, data: Partial<BookingPayload>): Promise<Booking> {
   /**
    * Same structure as createBooking — allows partial update
    */

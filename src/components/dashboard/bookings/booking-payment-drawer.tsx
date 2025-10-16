@@ -33,7 +33,7 @@ export default function PaymentDrawer({ open, bookingId, onClose }: PaymentDrawe
     try {
       setLoading(true);
       const res = await getBookingPayments(bookingId);
-      setPayments(res?.results || res?.data || []);
+      setPayments(res?.results || []);
     } catch (err) {
       console.error("Failed to fetch payments:", err);
     } finally {

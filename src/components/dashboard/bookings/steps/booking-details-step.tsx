@@ -132,7 +132,7 @@ export default function BookingDetailsStep({
 
     // Admin Discount (applied only on button)
     const [adminInput, setAdminInput] = useState<number>(Number(initialAdminDiscount || 0));
-    const [adminApplied, setAdminApplied] = useState<number>(Number(initialPricing?.admin_discount || 0));
+    const [adminApplied, setAdminApplied] = useState<number>(Number(initialPricing?.admin || 0));
 
     // Sorting state
     const [sortKey, setSortKey] = useState<keyof ItemRow | null>(null);

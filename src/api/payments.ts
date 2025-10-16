@@ -21,10 +21,17 @@ export interface BookingPayment {
   updated_at: string;
 }
 
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 /**
  * 📄 Get all payments for a booking
  */
-export async function getBookingPayments(bookingId: string): Promise<BookingPayment[]> {
+export async function getBookingPayments(bookingId: string): Promise<PaginatedResponse<BookingPayment>> {
   const res = await api.get(`/payments/`, { params: { booking: bookingId } });
   return res.data ;
 }

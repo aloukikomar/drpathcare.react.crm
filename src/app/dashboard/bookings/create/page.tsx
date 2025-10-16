@@ -125,14 +125,9 @@ export default function CreateBookingPage() {
             pricing={pricing}
             scheduledDate={scheduledDate}
             scheduledTime={scheduledTime}
-            setScheduledDate={setScheduledDate}
-            setScheduledTime={setScheduledTime}
-            couponCode={couponCode}
             selectedCoupon={selectedCoupon}
-            onApplyCoupon={handleApplyCoupon}
-            onCreateBooking={handleCreateBooking}
-            onBackToCustomer={goToCustomerStep}
-            onBackToTests={goToTestStep}
+            goToCustomerStep={goToCustomerStep}
+            goToTestsStep={goToTestStep}
             onBack={handleBack}
           />
         )}

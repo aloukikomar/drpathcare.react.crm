@@ -96,7 +96,7 @@ export function NotificationsWrapper({
         res = await getNotifications(params);
       }
 
-      const raw = res.results || res.data || [];
+      const raw = res.results || [];
       let mapped = raw;
 
       if (entityType === "notification") {
@@ -113,7 +113,7 @@ export function NotificationsWrapper({
       }
 
       setRows(mapped);
-      setTotalCount(res.count ?? res.total ?? mapped.length);
+      setTotalCount(res.count ?? mapped.length);
     } catch (err: any) {
       setError(
         err?.response?.data?.detail || err?.message || "Failed to load data"
@@ -202,10 +202,10 @@ export function NotificationsWrapper({
             setRowsPerPage(newSize);
             setPage(1);
           }}
-          onSort={(key: string, dir: "asc" | "desc") => {
-            setSortBy(key);
-            setSortDir(dir);
-          }}
+          onSort={(key, dir) => {
+                        setSortBy(String(key));
+                        setSortDir(dir);
+                    }}
           //onEdit={handleEdit}
         />
       )}
