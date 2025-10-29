@@ -246,3 +246,41 @@ export async function validateCoupon(
   const response = await api.post("/coupons/validate/", { code, booking_amount });
   return response.data;
 }
+
+export const getBookingDocuments = async (bookingId: string) => {
+  const res = await api.get(`/booking-documents/`, { params: { "booking": bookingId } });
+  return res.data;
+};
+
+export interface BookingDocumentPayload {
+  booking: string; // booking UUID
+  name: string;
+  description?: string;
+  doc_type?: string;
+  file: File | null;
+}
+
+export async function uploadBookingDocument(payload: BookingDocumentPayload): Promise<any> {
+  if (!payload.file) {
+    throw new Error("File is required to upload booking document.");
+  }
+
+  const formData = new FormData();
+
+  formData.append("booking", payload.booking);
+  formData.append("name", payload.name);
+
+  // optional fields only if provided
+  if (payload.doc_type) formData.append("doc_type", payload.doc_type);
+  if (payload.description) formData.append("description", payload.description);
+
+  formData.append("file", payload.file);
+
+  const response = await api.post("/booking-documents/", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
+  return response.data;
+}

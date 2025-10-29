@@ -119,6 +119,15 @@ export function CustomerSection({
         >
           + Add Customer
         </Button>
+        <Button
+          variant="outlined"
+          onClick={() => {
+            setEditingMode(false);
+            setCustomerModalOpen(true);
+          }}
+        >
+          + Add Lead Customer
+        </Button>
       </Stack>
 
       {/* 📇 Customer Contact Card */}

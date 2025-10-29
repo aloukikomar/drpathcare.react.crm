@@ -17,7 +17,8 @@ import {
   Box,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { updateBooking } from "@/api/bookings";
+import { updateBooking, uploadBookingDocument } from "@/api/bookings";
+import api from "@/api/axios";
 
 interface BookingOperationsModalProps {
   open: boolean;
@@ -34,7 +35,7 @@ const ACTIONS = [
   // { value: "update_agent", label: "Update Agent" },
   { value: "update_payment", label: "Update Payment Status" },
   { value: "update_schedule", label: "Reschedule" },
-  // { value: "upload_document", label: "Upload Document" },
+  { value: "upload_document", label: "Upload Document" },
 ];
 
 export function BookingOperationsModal({
@@ -59,6 +60,13 @@ export function BookingOperationsModal({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  // For upload_document
+  const [docName, setDocName] = useState("");
+  const [docDescription, setDocDescription] = useState("");
+  const [docType, setDocType] = useState("other");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [paymentProof, setPaymentProof] = useState<File | null>(null);
+
 
   const resetForm = () => {
     setActionType("");
@@ -76,22 +84,31 @@ export function BookingOperationsModal({
 
     let payload: Record<string, any> = { action_type: actionType, remarks };
 
+    // 🔹 Status Update
     if (actionType === "update_status") {
       payload.status = status;
     }
 
+    // 🔹 Agent Update
     if (actionType === "update_agent") {
       payload.current_agent = agentId;
     }
 
+    // 🔹 Payment Update
     if (actionType === "update_payment") {
       if (!paymentMethod) return setError("Please select a payment method.");
       payload.payment_method = paymentMethod;
+
+      // for cash payment, we’ll upload file
       if (paymentMethod === "cash") {
         payload.payment_status = "success";
+        if (!paymentProof) {
+          return setError("Please upload payment proof for cash transactions.");
+        }
       }
     }
 
+    // 🔹 Schedule Update
     if (actionType === "update_schedule") {
       if (!newDate || !newTime)
         return setError("Please select both date and time for rescheduling.");
@@ -99,9 +116,44 @@ export function BookingOperationsModal({
       payload.scheduled_time = newTime;
     }
 
+    // 🔹 Document Upload
+    if (actionType === "upload_document" && !selectedFile) {
+      return setError("Please select a file to upload.");
+    }
+
     try {
       setLoading(true);
-      await updateBooking(bookingId, payload);
+
+      if (actionType === "upload_document") {
+        // ⬆️ Upload Booking Document via separate endpoint
+        await uploadBookingDocument({
+          booking: bookingId,
+          name: docName,
+          description: remarks || "Document uploaded",
+          doc_type: docType,
+          file: selectedFile,
+        });
+      }
+
+      // 🔸 Payment update with file (cash proof)
+      else if (actionType === "update_payment" && paymentMethod === "cash") {
+        const formData = new FormData();
+        formData.append("action_type", "update_payment");
+        formData.append("payment_method", "cash");
+        formData.append("remarks", remarks);
+        formData.append("payment_status", "success");
+        if (paymentProof) formData.append("file", paymentProof);
+
+        await api.patch(`/bookings/${bookingId}/`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+
+      // 🔸 Default JSON payload for other update types
+      else {
+        await updateBooking(bookingId, payload);
+      }
+
       onSubmit();
       onClose();
       resetForm();
@@ -113,13 +165,14 @@ export function BookingOperationsModal({
     }
   };
 
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       {/* Header */}
       <DialogTitle>
         ID: {bookingId}
         <Button
-          disabled
+
           onClick={() => router.push(`/dashboard/bookings/${bookingId}/edit`)}
           variant="outlined"
           size="small"
@@ -183,25 +236,47 @@ export function BookingOperationsModal({
           )}
 
           {actionType === "update_payment" && (
-            <Box>
-              <FormControl fullWidth sx={{ mb: 2 }}>
+            <Stack spacing={2}>
+              <FormControl fullWidth>
                 <InputLabel>Payment Method</InputLabel>
                 <Select
                   label="Payment Method"
                   value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value as any)}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
                 >
                   <MenuItem value="cash">Cash</MenuItem>
                   <MenuItem value="online">Online</MenuItem>
                 </Select>
               </FormControl>
 
+              {paymentMethod === "cash" && (
+                <>
+                  <Button variant="outlined" component="label">
+                    Upload Proof
+                    <input
+                      type="file"
+                      hidden
+                      onChange={(e) => setPaymentProof(e.target.files?.[0] || null)}
+                    />
+                  </Button>
+                  {paymentProof && (
+                    <Typography variant="body2" color="text.secondary">
+                      📎 {paymentProof.name}
+                    </Typography>
+                  )}
+                  <Typography variant="body2" color="text.secondary">
+                    🧾 Upload a photo or PDF of the payment receipt.
+                  </Typography>
+                </>
+              )}
+
               <Typography variant="body2" color="text.secondary">
-                💡 If Cash is selected, payment will be marked as <b>success</b>.  
-                If Online is selected, the backend will handle payment initiation.
+                💡 If Cash is selected, the booking will be marked as <b>Payment Collected</b>.
+                Online payments will be initiated via payment link.
               </Typography>
-            </Box>
+            </Stack>
           )}
+
 
           {actionType === "update_schedule" && (
             <Stack spacing={2}>
@@ -226,6 +301,56 @@ export function BookingOperationsModal({
               </Typography>
             </Stack>
           )}
+
+          {actionType === "upload_document" && (
+            <Stack spacing={2}>
+              <TextField
+                label="Document Name"
+                value={docName}
+                onChange={(e) => setDocName(e.target.value)}
+                fullWidth
+                required
+              />
+
+              <TextField
+                select
+                label="Document Type"
+                value={docType}
+                onChange={(e) => setDocType(e.target.value)}
+                fullWidth
+                required
+              >
+                <MenuItem value="cash_receipt">Cash Receipt</MenuItem>
+                <MenuItem value="lab_report">Lab Report</MenuItem>
+                <MenuItem value="prescription">Prescription</MenuItem>
+                <MenuItem value="other">Other</MenuItem>
+              </TextField>
+
+              <Button
+                variant="outlined"
+                component="label"
+                sx={{ alignSelf: "flex-start" }}
+              >
+                Upload File
+                <input
+                  type="file"
+                  hidden
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                />
+              </Button>
+
+              {selectedFile && (
+                <Typography variant="body2" color="text.secondary">
+                  📎 {selectedFile.name}
+                </Typography>
+              )}
+
+              <Typography variant="body2" color="text.secondary">
+                📄 Attach receipts, reports, or any booking-related document.
+              </Typography>
+            </Stack>
+          )}
+
 
           {/* Remarks - always required */}
           <TextField

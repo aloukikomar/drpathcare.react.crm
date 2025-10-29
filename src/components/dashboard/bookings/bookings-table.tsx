@@ -26,9 +26,11 @@ import {
   PencilSimple,
   ClockCounterClockwise,
   CurrencyInr,
+  Paperclip,
 } from "@phosphor-icons/react";
 import { BookingOperationsModal } from "./booking-operations-modal";
 import PaymentDrawer from "./booking-payment-drawer";
+import BookingDocumentsDrawer from "./booking-documents-drawer";
 
 type SortDir = "asc" | "desc";
 
@@ -82,6 +84,9 @@ export function BookingsTable({
   const [openOperationModal, setOpenOperationModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<string>("");
   const [paymentDrawerOpen, setPaymentDrawerOpen] = useState(false);
+  // ✅ new states for documents drawer
+  const [documentsDrawerOpen, setDocumentsDrawerOpen] = useState(false);
+  const [documentsBookingId, setDocumentsBookingId] = useState<string | null>(null);
 
   // server sorting state (so label shows correct direction)
   const [sortBy, setSortBy] = useState<string | null>(null);
@@ -106,6 +111,10 @@ export function BookingsTable({
     setPaymentDrawerOpen(true);
   };
 
+  const handleDocuments = (bookingId: string) => {
+    setDocumentsBookingId(bookingId);
+    setDocumentsDrawerOpen(true);
+  };
   // columns + mapping to API ordering keys
   const columns: { key: string; label: string; sortable?: boolean; orderKey?: string }[] = [
     { key: "expand", label: "" },
@@ -155,13 +164,13 @@ export function BookingsTable({
 
     switch (normalized) {
       case "completed":
-        return <Chip label={label} color="success" size="small" sx={chipStyle}/>;
+        return <Chip label={label} color="success" size="small" sx={chipStyle} />;
       case "report_uploaded":
-        return <Chip label={label} color="info" size="small" sx={chipStyle}/>;
+        return <Chip label={label} color="info" size="small" sx={chipStyle} />;
       case "open":
-        return <Chip label={label} color="info" size="small" sx={chipStyle}/>;
+        return <Chip label={label} color="info" size="small" sx={chipStyle} />;
       case "verified":
-        return <Chip label={label} color="warning" size="small" sx={chipStyle}/>;
+        return <Chip label={label} color="warning" size="small" sx={chipStyle} />;
       case "cancelled":
         return <Chip label={label} color="error" size="small" sx={chipStyle} />;
       case "payment_collected":
@@ -180,19 +189,19 @@ export function BookingsTable({
     switch (normalized) {
       case "success":
       case "paid":
-        return <Chip label="Paid" color="success" size="small" sx={chipStyle}/>;
+        return <Chip label="Paid" color="success" size="small" sx={chipStyle} />;
 
       case "pending":
-        return <Chip label="Pending" color="info" size="small" sx={chipStyle}/>;
+        return <Chip label="Pending" color="info" size="small" sx={chipStyle} />;
       case "initiated":
-        return <Chip label="Initiated" color="warning" size="small" sx={chipStyle}/>;
+        return <Chip label="Initiated" color="warning" size="small" sx={chipStyle} />;
 
       case "failed":
       case "cancelled":
-        return <Chip label="Failed" color="error" size="small" sx={chipStyle}/>;
+        return <Chip label="Failed" color="error" size="small" sx={chipStyle} />;
 
       default:
-        return <Chip label={paymentStatus || "N/A"} color="default" size="small" sx={chipStyle}/>;
+        return <Chip label={paymentStatus || "N/A"} color="default" size="small" sx={chipStyle} />;
     }
   };
 
@@ -260,6 +269,9 @@ export function BookingsTable({
                         </IconButton>
                         <IconButton onClick={() => handlePayments(row.id)}>
                           <CurrencyInr />
+                        </IconButton>
+                        <IconButton onClick={() => handleDocuments(row.id)}>
+                          <Paperclip />
                         </IconButton>
                       </Stack>
                     </TableCell>
@@ -400,6 +412,14 @@ export function BookingsTable({
         bookingId={selectedBooking}
         onClose={() => setPaymentDrawerOpen(false)}
       />
+
+      {/* ✅ Booking Documents Drawer */}
+      <BookingDocumentsDrawer
+        open={documentsDrawerOpen}
+        onClose={() => setDocumentsDrawerOpen(false)}
+        bookingId={documentsBookingId}
+      />
+
     </>
   );
 }

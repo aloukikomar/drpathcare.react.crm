@@ -39,7 +39,8 @@ export default function PatientModal({
     first_name: "",
     last_name: "",
     gender: "Male",
-    date_of_birth: "",
+    date_of_birth: null,
+    age:null
   });
 
   const [loading, setLoading] = useState(false);
@@ -60,7 +61,8 @@ export default function PatientModal({
       first_name: patient?.first_name || "",
       last_name: patient?.last_name || "",
       gender: patient?.gender || "Male",
-      date_of_birth: patient?.date_of_birth || "",
+      date_of_birth: patient?.date_of_birth || null,
+      age:patient?.age || 18
     });
   }, [open, patient]);
 
@@ -212,6 +214,16 @@ export default function PatientModal({
             InputLabelProps={{ shrink: true }}
             fullWidth
             value={formData.date_of_birth}
+            onChange={handleChange}
+          />
+          <TextField
+            margin="dense"
+            label="Age"
+            name="age"
+            type="number"
+            InputLabelProps={{ shrink: true }}
+            fullWidth
+            value={formData.age}
             onChange={handleChange}
           />
         </DialogContent>

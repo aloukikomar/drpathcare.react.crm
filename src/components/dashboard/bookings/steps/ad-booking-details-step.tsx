@@ -51,37 +51,42 @@ export interface PricingState {
 }
 
 interface BookingDetailsStepProps {
-    // Data controlled by parent
-    customer: any;
-    schedule: ScheduleState;
-    setSchedule: (s: ScheduleState) => void;
-    items: ItemRow[];
-    setItems: (items: ItemRow[]) => void;
-    selectedCoupon: any;
-    setSelectedCoupon: (coupon: any) => void;
-    adminDiscount: number;
-    setAdminDiscount: (val: number) => void;
-    pricing: PricingState;
+    mode: "create" | "edit";
 
-    // Action from parent
-    onSubmit: () => void;
+    // Create-mode only
+    scheduledDate?: string;
+    scheduledTime?: string;
+    setScheduledDate?: (d: string) => void;
+    setScheduledTime?: (t: string) => void;
+
+    customer: any;
+    items: ItemRow[];
+    setItems: (i: ItemRow[]) => void;
+    selectedCoupon: any;
+    setSelectedCoupon: (c: any) => void;
+    pricing: PricingState;
+    setPricing: (p: PricingState) => void;
+
     buttonText: string;
+    onSubmit: () => void;
     onBack?: () => void;
 }
 
 export default function BookingDetailsStep({
+    mode,
+    scheduledDate,
+    scheduledTime,
+    setScheduledDate,
+    setScheduledTime,
     customer,
-    schedule,
-    setSchedule,
     items,
     setItems,
     selectedCoupon,
     setSelectedCoupon,
-    adminDiscount,
-    setAdminDiscount,
     pricing,
-    onSubmit,
+    setPricing,
     buttonText,
+    onSubmit,
     onBack,
 }: BookingDetailsStepProps) {
     const [loading, setLoading] = useState(false);
@@ -93,22 +98,22 @@ export default function BookingDetailsStep({
     const [couponList, setCouponList] = useState<any[]>([]);
     const [couponMessage, setCouponMessage] = useState("");
     const [openPatientModal, setOpenPatientModal] = useState(false);
+    const [adminInput, setAdminInput] = useState<number>(pricing.admin || 0);
+    const [adminApplied, setAdminApplied] = useState<number>(pricing.admin || 0);
+    const [couponApplied, setCouponApplied] = useState<number>(pricing.coupon || 0);
 
-    // ✅ Fetch dropdown data
+    // 🔹 Fetch patient list
     useEffect(() => {
         if (!customer?.id) return;
         (async () => {
-            try {
-                const res = await getPatient({ customer: customer.id, page_size: 1000 });
-                const list = res.results || res.data || [];
-                setPatientList(list);
-                if (!selectedPatient && list.length > 0) setSelectedPatient(list[0]);
-            } catch {
-                // ignore
-            }
+            const res = await getPatient({ customer: customer.id, page_size: 1000 });
+            const list = res.results || res.data || [];
+            setPatientList(list);
+            if (!selectedPatient && list.length > 0) setSelectedPatient(list[0]);
         })();
     }, [customer]);
 
+    // 🔹 Fetch lab items
     useEffect(() => {
         (async () => {
             let res: any;
@@ -121,18 +126,34 @@ export default function BookingDetailsStep({
         })();
     }, [itemType]);
 
+    // 🔹 Fetch coupons
     useEffect(() => {
         (async () => {
-            try {
-                const res = await getCoupons({ page_size: 100 });
-                setCouponList(res.results || res.data || []);
-            } catch {
-                // ignore
-            }
+            const res = await getCoupons({ page_size: 100 });
+            setCouponList(res.results || res.data || []);
         })();
     }, []);
 
-    // ✅ Actions
+    // 🔹 Derived pricing
+    const baseSum = useMemo(() => items.reduce((s, r) => s + Number(r.price || 0), 0), [items]);
+    const offerSum = useMemo(() => items.reduce((s, r) => s + Number(r.offer_price ?? r.price ?? 0), 0), [items]);
+    const coreDiscount = baseSum - offerSum;
+    const totalDiscount = coreDiscount + couponApplied + adminApplied;
+    const final = Math.max(0, baseSum - totalDiscount);
+
+    useEffect(() => {
+        {console.log(pricing)}
+        setPricing({
+            base: baseSum,
+            offer: offerSum,
+            coupon: couponApplied,
+            admin: adminApplied,
+            totalDiscount,
+            final,
+        });
+    }, [baseSum, offerSum, couponApplied, adminApplied]);
+
+    // 🔹 Handlers
     const handleAddItem = () => {
         if (!selectedPatient || !selectedItem) return;
         const newItem: ItemRow = {
@@ -157,15 +178,23 @@ export default function BookingDetailsStep({
             return;
         }
         try {
-            const res = await validateCoupon(selectedCoupon.code, pricing.base);
+            const res = await validateCoupon(selectedCoupon.code, baseSum);
             if (res.valid) {
+                const discount = Number(res.discount || selectedCoupon.discount_amount || 0);
+                setCouponApplied(discount);
                 setCouponMessage(res.message || "Coupon applied.");
             } else {
-                setCouponMessage(res.message || "Coupon not valid.");
+                setCouponMessage(res.message || "Invalid coupon.");
+                setCouponApplied(0);
             }
         } catch {
             setCouponMessage("Coupon validation failed.");
+            setCouponApplied(0);
         }
+    };
+
+    const handleApplyAdmin = () => {
+        setAdminApplied(Number(adminInput || 0));
     };
 
     if (loading) {
@@ -176,35 +205,42 @@ export default function BookingDetailsStep({
         );
     }
 
+    // 🔹 UI
     return (
         <Box>
-            <Typography variant="h6">Booking Details</Typography>
+            <Typography variant="h6">
+                {mode === "edit" ? "Booking Details" : "Booking Setup"}
+            </Typography>
             <Divider sx={{ my: 2 }} />
 
-            {/* Schedule */}
-            <Paper sx={{ p: 2, mb: 3 }} variant="outlined">
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                    <TextField
-                        type="date"
-                        label="Date"
-                        InputLabelProps={{ shrink: true }}
-                        value={schedule.date}
-                        onChange={(e) => setSchedule({ ...schedule, date: e.target.value })}
-                        required
-                    />
-                    <TextField
-                        type="time"
-                        label="Time"
-                        InputLabelProps={{ shrink: true }}
-                        value={schedule.time}
-                        onChange={(e) => setSchedule({ ...schedule, time: e.target.value })}
-                        required
-                    />
-                </Stack>
-            </Paper>
+            {/* ✅ Schedule - only in CREATE mode */}
+            {mode === "create" && (
+                <Paper sx={{ p: 2, mb: 3 }} variant="outlined">
+                    <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                        Schedule Test
+                    </Typography>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                        <TextField
+                            type="date"
+                            label="Date"
+                            InputLabelProps={{ shrink: true }}
+                            value={scheduledDate || ""}
+                            onChange={(e) => setScheduledDate?.(e.target.value)}
+                            required
+                        />
+                        <TextField
+                            type="time"
+                            label="Time"
+                            InputLabelProps={{ shrink: true }}
+                            value={scheduledTime || ""}
+                            onChange={(e) => setScheduledTime?.(e.target.value)}
+                            required
+                        />
+                    </Stack>
+                </Paper>
+            )}
 
-            {/* Add Item */}
-            {/* Add Item Row */}
+            {/* Item Selection */}
             <Paper sx={{ p: 2, mb: 3 }} variant="outlined">
                 <Stack
                     direction={{ xs: "column", md: "row" }}
@@ -212,123 +248,124 @@ export default function BookingDetailsStep({
                     alignItems={{ xs: "stretch", md: "center" }}
                 >
                     {/* Patient */}
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ flex: 1 }}>
+                    <Box sx={{ flex: { md: 3, xs: 1 } }}>
                         <Autocomplete
-                            fullWidth
                             options={patientList}
                             getOptionLabel={(p: any) =>
                                 `${p.first_name ?? ""} ${p.last_name ?? ""} (${p.gender ?? ""})`
                             }
                             value={selectedPatient}
                             onChange={(_, v) => setSelectedPatient(v)}
-                            renderInput={(params) => (
-                                <TextField {...params} fullWidth label="Select Patient" />
-                            )}
+                            renderInput={(params) => <TextField {...params} label="Select Patient" />}
+                            fullWidth
                         />
+                    </Box>
+
+                    {/* Add Patient Button */}
+                    <Box sx={{ flex: { md: 1, xs: 1 } }}>
                         <Button
+                            fullWidth
                             variant="outlined"
                             onClick={() => setOpenPatientModal(true)}
-                            sx={{ minWidth: { xs: "100%", sm: "auto" } }}
+                            sx={{ height: "100%" }}
                         >
-                            + Add Patient
+                            + Add
                         </Button>
-                    </Stack>
+                    </Box>
 
                     {/* Item Type */}
-                    <TextField
-                        select
-                        fullWidth
-                        label="Item Type"
-                        value={itemType}
-                        onChange={(e) => setItemType(e.target.value as ItemType)}
-                        sx={{ width: { xs: "100%", md: 200 } }}
-                    >
-                        <MenuItem value="lab_test">Lab Test</MenuItem>
-                        <MenuItem value="lab_profile">Lab Profile</MenuItem>
-                        <MenuItem value="lab_package">Lab Package</MenuItem>
-                    </TextField>
+                    <Box sx={{ flex: { md: 2, xs: 1 } }}>
+                        <TextField
+                            select
+                            fullWidth
+                            label="Item Type"
+                            value={itemType}
+                            onChange={(e) => setItemType(e.target.value as ItemType)}
+                        >
+                            <MenuItem value="lab_test">Lab Test</MenuItem>
+                            <MenuItem value="lab_profile">Lab Profile</MenuItem>
+                            <MenuItem value="lab_package">Lab Package</MenuItem>
+                        </TextField>
+                    </Box>
 
                     {/* Item */}
-                    <Autocomplete
-                        fullWidth
-                        options={itemList}
-                        getOptionLabel={(i: any) => i?.name ?? ""}
-                        value={selectedItem}
-                        onChange={(_, v) => setSelectedItem(v)}
-                        renderInput={(params) => (
-                            <TextField {...params} fullWidth label="Select Item" />
-                        )}
-                        sx={{ flex: 1 }}
-                    />
+                    <Box sx={{ flex: { md: 3, xs: 1 } }}>
+                        <Autocomplete
+                            options={itemList}
+                            getOptionLabel={(i: any) => i?.name ?? ""}
+                            value={selectedItem}
+                            onChange={(_, v) => setSelectedItem(v)}
+                            renderInput={(params) => <TextField {...params} label="Select Item" />}
+                            fullWidth
+                        />
+                    </Box>
 
                     {/* Add Button */}
-                    <Button
-                        variant="contained"
-                        startIcon={<PlusCircleIcon />}
-                        disabled={!selectedPatient || !selectedItem}
-                        onClick={handleAddItem}
-                        sx={{
-                            width: { xs: "100%", md: "auto" },
-                            mt: { xs: 1, md: 0 },
-                        }}
-                    >
-                        Add
-                    </Button>
+                    <Box sx={{ flex: { md: 1, xs: 1 } }}>
+                        <Button
+                            fullWidth
+                            variant="contained"
+                            startIcon={<PlusCircleIcon />}
+                            disabled={!selectedPatient || !selectedItem}
+                            onClick={handleAddItem}
+                            sx={{ height: "100%", py: 1.5 }}
+                        >
+                            Add
+                        </Button>
+                    </Box>
                 </Stack>
             </Paper>
+
 
             {/* Items Table */}
             <Paper sx={{ p: 2, mb: 3 }} variant="outlined">
                 <Typography variant="subtitle1" sx={{ mb: 1 }}>
                     Selected Items
                 </Typography>
-                <Box sx={{ maxHeight: 250, overflow: "auto" }}>
-                    <Table size="small" stickyHeader>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Patient</TableCell>
-                                <TableCell>Type</TableCell>
-                                <TableCell>Item</TableCell>
-                                <TableCell>Price</TableCell>
-                                <TableCell>Offer Price</TableCell>
-                                <TableCell align="right">Actions</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {items.length ? (
-                                items.map((r) => (
-                                    <TableRow key={r.id}>
-                                        <TableCell>{r.patient?.first_name}</TableCell>
-                                        <TableCell>{r.itemType}</TableCell>
-                                        <TableCell>{r.item?.name}</TableCell>
-                                        <TableCell>₹{r.price}</TableCell>
-                                        <TableCell>₹{r.offer_price}</TableCell>
-                                        <TableCell align="right">
-                                            <IconButton onClick={() => handleRemoveItem(r.id)}>
-                                                <TrashIcon />
-                                            </IconButton>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={6} align="center">
-                                        No items added
+                <Table size="small">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>Patient</TableCell>
+                            <TableCell>Type</TableCell>
+                            <TableCell>Item</TableCell>
+                            <TableCell>Price</TableCell>
+                            <TableCell>Offer Price</TableCell>
+                            <TableCell align="right">Actions</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {items.length ? (
+                            items.map((r) => (
+                                <TableRow key={r.id}>
+                                    <TableCell>{r.patient?.first_name}</TableCell>
+                                    <TableCell>{r.itemType}</TableCell>
+                                    <TableCell>{r.item?.name}</TableCell>
+                                    <TableCell>₹{r.price}</TableCell>
+                                    <TableCell>₹{r.offer_price}</TableCell>
+                                    <TableCell align="right">
+                                        <IconButton onClick={() => handleRemoveItem(r.id)}>
+                                            <TrashIcon />
+                                        </IconButton>
                                     </TableCell>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </Box>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={6} align="center">
+                                    No items added
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
             </Paper>
 
-            {/* Coupons & Discounts */}
+            {/* Discounts & Pricing */}
             <Paper sx={{ p: 2, mb: 3 }} variant="outlined">
-                <Typography variant="subtitle1" sx={{ mb: 2 }}>
-                    Coupons & Discounts
-                </Typography>
-                <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                    <Stack spacing={1} sx={{ flex: 1 }}>
+                <Typography variant="subtitle1">Coupons & Discounts</Typography>
+                <Stack spacing={2} direction={{ xs: "column", md: "row" }} mt={2}>
+                    {/* Coupon */}
+                    <Stack spacing={1} flex={1}>
                         <Autocomplete
                             options={couponList}
                             getOptionLabel={(o) => o?.code ?? ""}
@@ -346,32 +383,44 @@ export default function BookingDetailsStep({
                         )}
                     </Stack>
 
-                    <Stack spacing={1} sx={{ width: { xs: "100%", md: 240 } }}>
+                    {/* Admin Discount */}
+                    <Stack spacing={1} sx={{ width: { xs: "100%", md: 260 } }}>
                         <TextField
                             label="Admin Discount (₹)"
-                            value={adminDiscount}
-                            onChange={(e) => setAdminDiscount(Number(e.target.value) || 0)}
+                            type="number"
+                            value={adminInput}
+                            onChange={(e) => setAdminInput(Number(e.target.value) || 0)}
                         />
+                        <Button variant="outlined" onClick={handleApplyAdmin}>
+                            Apply Admin Discount
+                        </Button>
                     </Stack>
                 </Stack>
-
+                        
                 <Divider sx={{ my: 2 }} />
+                
                 <Stack spacing={0.5}>
                     <Typography>Base Price: ₹{pricing.base.toFixed(2)}</Typography>
                     <Typography>Offer Price: ₹{pricing.offer.toFixed(2)}</Typography>
-                    <Typography color="success.main">
+                    <Typography sx={{ color: "success.main" }}>
                         Core Discount: -₹{(pricing.base - pricing.offer).toFixed(2)}
                     </Typography>
                     {pricing.coupon > 0 && (
-                        <Typography color="success.main">Coupon Discount: -₹{pricing.coupon.toFixed(2)}</Typography>
+                        <Typography sx={{ color: "success.main" }}>
+                            Coupon Discount: -₹{pricing.coupon.toFixed(2)}
+                        </Typography>
                     )}
                     {pricing.admin > 0 && (
-                        <Typography color="success.main">Admin Discount: -₹{pricing.admin.toFixed(2)}</Typography>
+                        <Typography sx={{ color: "success.main" }}>
+                            Admin Discount: -₹{pricing.admin.toFixed(2)}
+                        </Typography>
                     )}
-                    <Typography color="success.main">
+                    <Typography sx={{ color: "success.main" }}>
                         Total Discount: -₹{pricing.totalDiscount.toFixed(2)}
                     </Typography>
-                    <Typography variant="h6">Final Amount: ₹{pricing.final.toFixed(2)}</Typography>
+                    <Typography variant="h6">
+                        Final Amount: ₹{pricing.final.toFixed(2)}
+                    </Typography>
                 </Stack>
             </Paper>
 
@@ -387,7 +436,6 @@ export default function BookingDetailsStep({
                 open={openPatientModal}
                 onClose={() => setOpenPatientModal(false)}
                 onSaved={() => {
-                    setOpenPatientModal(false);
                     getPatient({ customer: customer.id, page_size: 1000 }).then((res) =>
                         setPatientList(res.results || res.data || [])
                     );

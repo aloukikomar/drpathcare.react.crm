@@ -6,7 +6,7 @@ import { Stack, Box, Stepper, Step, StepLabel } from "@mui/material";
 import { CustomerDetailsStep } from "@/components/dashboard/bookings/steps/customer-details-step";
 import { TestDetailsStep } from "@/components/dashboard/bookings/steps/test-details-step";
 import { ReviewStep } from "@/components/dashboard/bookings/steps/review-step";
-import BookingDetailsStep from "@/components/dashboard/bookings/steps/booking-details-step"
+import BookingDetailsStep from "@/components/dashboard/bookings/steps/ad-booking-details-step"
 
 const steps = ["Customer Details", "Booking Details", "Review & Confirm"];
 
@@ -101,19 +101,21 @@ export default function CreateBookingPage() {
           <BookingDetailsStep
             mode="create"
             customer={customer}
-            onBack={() => setActiveStep(0)}
+            scheduledDate={scheduledDate}
+            scheduledTime={scheduledTime}
+            setScheduledDate={setScheduledDate}
+            setScheduledTime={setScheduledTime}
+            items={testDetails}
+            setItems={setTestDetails}
             selectedCoupon={selectedCoupon}
             setSelectedCoupon={setSelectedCoupon}
-            onContinue={({ schedule, items, pricing, coupon }) => {
-              // move to Review step with these values
-              setScheduledDate(schedule.date);
-              setScheduledTime(schedule.time);
-              setTestDetails(items);
-              setPricing(pricing);
-              setCouponCode(coupon);
-              setActiveStep(2);
-            }}
+            pricing={pricing}
+            setPricing={setPricing}
+            buttonText="Next"
+            onSubmit={() => setActiveStep(2)}
+            onBack={() => setActiveStep(0)}
           />
+
         )}
 
         {/* Step 3: Review & Confirm */}

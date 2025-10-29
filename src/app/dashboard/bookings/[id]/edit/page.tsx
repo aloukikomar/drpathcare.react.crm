@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Box,
@@ -27,7 +27,6 @@ import { CustomerSection } from "@/components/dashboard/customers/customer-secti
 import { AddressSection } from "@/components/dashboard/customers/address-section";
 import BookingDetailsStep, {
   ItemRow,
-  ScheduleState,
   PricingState,
 } from "@/components/dashboard/bookings/steps/ad-booking-details-step";
 
@@ -61,21 +60,30 @@ export default function EditBookingPage() {
   const [customer, setCustomer] = useState<any>(null);
   const [address, setAddress] = useState<any>(null);
 
-  // Editable states
-  const [schedule, setSchedule] = useState<ScheduleState>({ date: "", time: "" });
+  // Editable
+  // const [schedule, setSchedule] = useState<ScheduleState>({ date: "", time: "" });
   const [items, setItems] = useState<ItemRow[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<any>(null);
-  const [adminDiscount, setAdminDiscount] = useState<number>(0);
 
-  // Store old snapshot
-  const [oldSchedule, setOldSchedule] = useState<ScheduleState | null>(null);
+  // Pricing (now fully controlled)
+  const [pricing, setPricing] = useState<PricingState>({
+    base: 0,
+    offer: 0,
+    coupon: 0,
+    admin: 0,
+    totalDiscount: 0,
+    final: 0,
+  });
+
+  // Old snapshot for diff detection
+  // const [oldSchedule, setOldSchedule] = useState<ScheduleState | null>(null);
   const [oldItems, setOldItems] = useState<ItemRow[]>([]);
   const [oldCalc, setOldCalc] = useState<{ coupon: any; admin: number }>({
     coupon: null,
     admin: 0,
   });
 
-  // Confirm dialog
+  // Confirmation modal
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [diffs, setDiffs] = useState<string[]>([]);
   const [remarks, setRemarks] = useState("");
@@ -93,19 +101,16 @@ export default function EditBookingPage() {
         setCustomer(data.user_detail);
         setAddress(data.address_detail);
 
-        const fetchedSchedule = {
-          date: data.scheduled_date || "",
-          time: data.scheduled_time || "",
-        };
-        setSchedule(fetchedSchedule);
-        setOldSchedule(fetchedSchedule);
+        // const fetchedSchedule = {
+        //   date: data.scheduled_date || "",
+        //   time: data.scheduled_time || "",
+        // };
+        // setSchedule(fetchedSchedule);
+        // setOldSchedule(fetchedSchedule);
 
         const rows: ItemRow[] = (data.items || []).map((bi: any) => {
           const ref =
-            bi.lab_test_detail ||
-            bi.profile_detail ||
-            bi.package_detail ||
-            {};
+            bi.lab_test_detail || bi.profile_detail || bi.package_detail || {};
           const itemType: "lab_test" | "lab_profile" | "lab_package" = bi.lab_test
             ? "lab_test"
             : bi.profile
@@ -115,6 +120,7 @@ export default function EditBookingPage() {
             id: bi.id,
             patient: bi.patient_detail,
             itemType,
+            item_type:itemType,
             item: ref,
             price: Number(bi.base_price || ref.price || 0),
             offer_price: Number(bi.offer_price ?? ref.offer_price ?? ref.price ?? 0),
@@ -126,9 +132,10 @@ export default function EditBookingPage() {
         const calc = {
           coupon: data.coupon_detail,
           admin: Number(data.admin_discount || 0),
+          coupon_dis: Number(data.coupon_discount || 0)
         };
         setSelectedCoupon(data.coupon_detail);
-        setAdminDiscount(calc.admin);
+        setPricing((p) => ({ ...p, admin: calc.admin,coupon: calc.coupon_dis }));
         setOldCalc(calc);
       } catch (err: any) {
         if (mounted) setError(err?.message || "Failed to load booking");
@@ -141,35 +148,20 @@ export default function EditBookingPage() {
     };
   }, [bookingId]);
 
-  // --- Pricing Computation ---
-  const pricing: PricingState = useMemo(() => {
-    const base = items.reduce((s, i) => s + i.price, 0);
-    const offer = items.reduce((s, i) => s + i.offer_price, 0);
-    const coreDiscount = base - offer;
-    const coupon = selectedCoupon?.discount_amount || 0;
-    const totalDiscount = coreDiscount + coupon + adminDiscount;
-    const final = Math.max(0, base - totalDiscount);
-
-    return { base, offer, coupon, admin: adminDiscount, totalDiscount, final };
-  }, [items, selectedCoupon, adminDiscount]);
-
   // --- Detect Differences ---
   const detectDifferences = () => {
     const changes: string[] = [];
 
-    // Schedule changes
-    if (oldSchedule?.date !== schedule.date)
-      changes.push(`Scheduled Date changed from ${oldSchedule?.date} → ${schedule.date}`);
-    if (oldSchedule?.time !== schedule.time)
-      changes.push(`Scheduled Time changed from ${oldSchedule?.time} → ${schedule.time}`);
+    // if (oldSchedule?.date !== schedule.date)
+    //   changes.push(`Scheduled Date changed from ${oldSchedule?.date} → ${schedule.date}`);
+    // if (oldSchedule?.time !== schedule.time)
+    //   changes.push(`Scheduled Time changed from ${oldSchedule?.time} → ${schedule.time}`);
 
-    // Coupon/Admin
     if ((oldCalc?.coupon?.id || null) !== (selectedCoupon?.id || null))
-      changes.push(`Coupon changed`);
-    if (oldCalc?.admin !== adminDiscount)
-      changes.push(`Admin Discount changed from ₹${oldCalc.admin} → ₹${adminDiscount}`);
+      changes.push("Coupon changed");
+    if (oldCalc?.admin !== pricing.admin)
+      changes.push(`Admin Discount changed from ₹${oldCalc.admin} → ₹${pricing.admin}`);
 
-    // Item changes
     if (oldItems.length !== items.length) {
       changes.push(`Item count changed (${oldItems.length} → ${items.length})`);
     } else {
@@ -190,9 +182,24 @@ export default function EditBookingPage() {
     return changes;
   };
 
+  const determineActionType = () => {
+    // const scheduleChanged =
+    //   oldSchedule?.date !== schedule.date || oldSchedule?.time !== schedule.time;
+    const itemsChanged = JSON.stringify(oldItems) !== JSON.stringify(items);
+    const discountChanged =
+      (oldCalc?.coupon?.id || null) !== (selectedCoupon?.id || null) ||
+      oldCalc?.admin !== pricing.admin;
+
+    if (itemsChanged) return "update_items";
+    // if (scheduleChanged) return "update_schedule";
+    if (discountChanged) return "update_discounts";
+    return null;
+  };
+
   // --- Confirmation Flow ---
   const handlePreSubmit = () => {
     const foundDiffs = detectDifferences();
+    console.log(foundDiffs)
     if (foundDiffs.length === 0) {
       handleSubmit(); // no changes
     } else {
@@ -207,18 +214,17 @@ export default function EditBookingPage() {
     await handleSubmit(actionType);
   };
 
-
   // --- Submit booking ---
-  const handleSubmit = async (actionType?: string|null) => {
+  const handleSubmit = async (actionType?: string | null) => {
     try {
       setLoading(true);
       const payload = {
         action_type: actionType,
         remarks,
-        scheduled_date: schedule.date,
-        scheduled_time: schedule.time,
+        // scheduled_date: schedule.date,
+        // scheduled_time: schedule.time,
         coupon: selectedCoupon?.id || null,
-        admin_discount: adminDiscount,
+        admin_discount: pricing.admin,
         base_total: pricing.base,
         offer_total: pricing.offer,
         final_amount: pricing.final,
@@ -228,6 +234,8 @@ export default function EditBookingPage() {
           patient: i.patient?.id,
           base_price: i.price,
           offer_price: i.offer_price,
+          product_type:i.itemType,
+          product_id: i.item?.id ,
           ...(i.itemType === "lab_test" && { lab_test: i.item?.id }),
           ...(i.itemType === "lab_profile" && { profile: i.item?.id }),
           ...(i.itemType === "lab_package" && { package: i.item?.id }),
@@ -241,20 +249,6 @@ export default function EditBookingPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const determineActionType = () => {
-    const scheduleChanged =
-      oldSchedule?.date !== schedule.date || oldSchedule?.time !== schedule.time;
-    const itemsChanged = JSON.stringify(oldItems) !== JSON.stringify(items);
-    const discountChanged =
-      (oldCalc?.coupon?.id || null) !== (selectedCoupon?.id || null) ||
-      oldCalc?.admin !== adminDiscount;
-
-    if (itemsChanged) return "update_items";
-    if (scheduleChanged) return "update_schedule";
-    if (discountChanged) return "update_discounts";
-    return null;
   };
 
   const handleTabChange = (_: any, newValue: number) => setTab(newValue as 0 | 1);
@@ -292,16 +286,14 @@ export default function EditBookingPage() {
           {/* Booking Items */}
           <TabPanel value={tab} index={0}>
             <BookingDetailsStep
+              mode="edit"
               customer={customer}
-              schedule={schedule}
-              setSchedule={setSchedule}
               items={items}
               setItems={setItems}
               selectedCoupon={selectedCoupon}
               setSelectedCoupon={setSelectedCoupon}
-              adminDiscount={adminDiscount}
-              setAdminDiscount={setAdminDiscount}
               pricing={pricing}
+              setPricing={setPricing}
               buttonText="Save Changes"
               onSubmit={handlePreSubmit}
               onBack={() => router.push("/dashboard/bookings")}
@@ -337,14 +329,13 @@ export default function EditBookingPage() {
         </>
       )}
 
-      {/* 🔹 Confirmation Dialog */}
+      {/* Confirmation Dialog */}
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Confirm Booking Changes</DialogTitle>
         <DialogContent dividers>
-          {/* 🟦 Info banner for multiple types of change */}
           {diffs.length > 1 && (
             <Alert severity="info" sx={{ mb: 2 }}>
-              You made changes in multiple sections — system will record this as "{determineActionType()}".
+              You made multiple changes — recorded as "{determineActionType()}".
             </Alert>
           )}
           <Typography variant="body2" sx={{ mb: 2 }}>
@@ -370,11 +361,7 @@ export default function EditBookingPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            disabled={!remarks.trim()}
-            onClick={handleConfirm}
-          >
+          <Button variant="contained" disabled={!remarks.trim()} onClick={handleConfirm}>
             Confirm & Save
           </Button>
         </DialogActions>

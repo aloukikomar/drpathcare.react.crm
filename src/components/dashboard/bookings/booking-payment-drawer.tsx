@@ -12,9 +12,10 @@ import {
   CircularProgress,
   Paper,
   Stack,
+  Tooltip,
 } from "@mui/material";
-import { X as CloseIcon, ArrowClockwise  } from "@phosphor-icons/react";
-import { getBookingPayments,refreshLatestPayment  } from "@/api/payments"; // 👈 you'll create these APIs
+import { X as CloseIcon, ArrowClockwise, DownloadSimple } from "@phosphor-icons/react";
+import { getBookingPayments, refreshLatestPayment } from "@/api/payments"; // 👈 you'll create these APIs
 
 interface PaymentDrawerProps {
   open: boolean;
@@ -58,6 +59,10 @@ export default function PaymentDrawer({ open, bookingId, onClose }: PaymentDrawe
     } finally {
       setUpdating(false);
     }
+  };
+
+  const handleDownload = (url: string) => {
+    if (url) window.open(url, "_blank");
   };
 
   return (
@@ -111,6 +116,20 @@ export default function PaymentDrawer({ open, bookingId, onClose }: PaymentDrawe
                     🔗 Payment Link
                   </a>
                 </Typography>
+              )}
+              {p.file_url && (
+                <Box sx={{ mt: 1.5 }}>
+                  <Tooltip title="Download Document">
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<DownloadSimple size={16} />}
+                      onClick={() => handleDownload(p.file_url)}
+                    >
+                      Download
+                    </Button>
+                  </Tooltip>
+                </Box>
               )}
             </Paper>
           ))}
