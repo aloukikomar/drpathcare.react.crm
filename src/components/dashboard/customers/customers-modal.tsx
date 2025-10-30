@@ -116,7 +116,7 @@ export default function CustomerModal({
     try {
       let savedData;
       if (!formData.date_of_birth){
-        delete formData.date_of_birth
+        delete (formData as any).date_of_birth;
       }
       if (customer?.id) {
         savedData = await updateCustomer(customer.id, formData);
