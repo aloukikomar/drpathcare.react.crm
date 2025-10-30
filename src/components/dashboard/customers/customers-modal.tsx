@@ -38,6 +38,7 @@ export default function CustomerModal({
     gender: "Male",
     date_of_birth: "",
     role: "",
+    age:"",
   });
 
   const [loading, setLoading] = useState(false);
@@ -58,6 +59,7 @@ export default function CustomerModal({
       gender: customer?.gender || "Male",
       date_of_birth: customer?.date_of_birth || "",
       role: customer?.role || "",
+      age: customer?.age || ""
     });
   }, [open, customer]);
 
@@ -72,11 +74,11 @@ export default function CustomerModal({
     const mobileRegex = /^\d{10}$/;
     const nameRegex = /^[a-zA-Z ]*$/;
 
-    if (!formData.email.trim()) {
-      setSnackbar({ open: true, message: "Email is required", severity: "error" });
-      return false;
-    }
-    if (!emailRegex.test(formData.email)) {
+    // if (!formData.email.trim()) {
+    //   setSnackbar({ open: true, message: "Email is required", severity: "error" });
+    //   return false;
+    // }
+    if (formData.email && !emailRegex.test(formData.email)) {
       setSnackbar({ open: true, message: "Invalid email format", severity: "error" });
       return false;
     }
@@ -100,8 +102,8 @@ export default function CustomerModal({
       setSnackbar({ open: true, message: "Last name must not contain special characters", severity: "error" });
       return false;
     }
-    if (!formData.date_of_birth) {
-      setSnackbar({ open: true, message: "Date of birth is required", severity: "error" });
+    if (!formData.date_of_birth && !formData.age) {
+      setSnackbar({ open: true, message: "Date of birth or Age is required", severity: "error" });
       return false;
     }
     return true;
@@ -113,6 +115,9 @@ export default function CustomerModal({
     setLoading(true);
     try {
       let savedData;
+      if (!formData.date_of_birth){
+        delete formData.date_of_birth
+      }
       if (customer?.id) {
         savedData = await updateCustomer(customer.id, formData);
       } else {
@@ -205,6 +210,16 @@ export default function CustomerModal({
             value={formData.date_of_birth}
             onChange={handleChange}
           />
+          <TextField
+            margin="dense"
+            label="Age"
+            name="age"
+            type="number"
+            InputLabelProps={{ shrink: true }}
+            fullWidth
+            value={formData.age}
+            onChange={handleChange}
+            />
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose} disabled={loading}>
